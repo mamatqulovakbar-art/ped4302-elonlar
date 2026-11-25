@@ -1,0 +1,35 @@
+name: Ped.43.02 e'lonlari
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # har 30 daqiqada (GitHub ba'zan bir necha daqiqa kechiktiradi)
+  workflow_dispatch:          # qo'lda ishga tushirish
+
+permissions:
+  contents: write
+
+concurrency:
+  group: forward
+  cancel-in-progress: false
+
+jobs:
+  forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kanalni tekshirish va yuborish
+        shell: pwsh
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: ./forward.ps1
+
+      - name: Holatni saqlash
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json forward.log 2>/dev/null || true
+          git diff --cached --quiet || (git commit -m "Yangi e'lonlar yuborildi" && git push)

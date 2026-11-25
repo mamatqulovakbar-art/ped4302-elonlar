@@ -31,6 +31,10 @@ function Get-Posts($url) {
 
 try {
     if (-not $DryRun -and (-not $token -or -not $chat)) { throw 'BOT_TOKEN yoki CHAT_ID berilmagan' }
+    if (-not $DryRun) {   # token va guruh to'g'riligini tekshirish (hech narsa yubormaydi)
+        $g = Invoke-RestMethod "https://api.telegram.org/bot$token/getChat?chat_id=$chat"
+        Write-Output "Guruh: $($g.result.title)"
+    }
     $state = Get-Content $StateFile -Raw | ConvertFrom-Json
     $sent  = @($state.sent)
 

@@ -1,8 +1,12 @@
 name: Ped.43.02 e'lonlari
 
+# Toshkent vaqti 08:00-24:00 (UTC 03:00-18:59) har 2 daqiqada tekshiradi.
+# GitHub jadvali 5 daqiqadan tez bo'lmaydi, shuning uchun har ishga tushish ~25 daqiqa
+# davomida o'zi ichida har 2 daqiqada tekshiradi. Jadval har 15 daqiqada: bitta ish
+# tugashini keyingisi navbatda kutib turadi (concurrency), shuning uchun uzilish bo'lmaydi.
 on:
   schedule:
-    - cron: '*/5 3-18 * * *'  # har 5 daqiqada, Toshkent vaqti 08:00-23:55 (UTC 03-18); GitHub ba'zan kechiktiradi
+    - cron: '*/15 3-18 * * *'
   workflow_dispatch:          # qo'lda ishga tushirish
 
 permissions:
@@ -15,21 +19,30 @@ concurrency:
 jobs:
   forward:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
 
-      - name: Kanalni tekshirish va yuborish
-        shell: pwsh
+      - name: Har 2 daqiqada tekshirish
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: ./forward.ps1
-
-      - name: Holatni saqlash
-        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add state.json forward.log 2>/dev/null || true
-          git diff --cached --quiet || (git commit -m "Yangi e'lonlar yuborildi" && git push)
+          end=$(( $(date +%s) + 25*60 ))
+          fails=0
+          while :; do
+            h=$(date -u +%H); h=$((10#$h))
+            if [ $h -lt 3 ] || [ $h -gt 18 ]; then echo "Toshkentda 00:00-08:00 - tekshirilmaydi"; break; fi
+            echo "=== $(date -u '+%H:%M:%S') UTC ==="
+            pwsh -NoProfile -File ./forward.ps1 || fails=$((fails+1))
+            git add state.json forward.log 2>/dev/null || true
+            if ! git diff --cached --quiet; then
+              git commit -q -m "Yangi e'lonlar yuborildi"
+              git pull -q --rebase && git push -q || echo "push xato"
+            fi
+            [ $(( $(date +%s) + 120 )) -ge $end ] && break
+            sleep 120
+          done
+          [ $fails -eq 0 ]

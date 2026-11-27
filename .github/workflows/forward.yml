@@ -2,7 +2,7 @@ name: Ped.43.02 e'lonlari
 
 on:
   schedule:
-    - cron: '*/30 * * * *'   # har 30 daqiqada (GitHub ba'zan bir necha daqiqa kechiktiradi)
+    - cron: '*/5 3-18 * * *'  # har 5 daqiqada, Toshkent vaqti 08:00-23:55 (UTC 03-18); GitHub ba'zan kechiktiradi
   workflow_dispatch:          # qo'lda ishga tushirish
 
 permissions:
